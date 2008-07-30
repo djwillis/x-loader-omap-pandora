@@ -55,7 +55,7 @@
 # define M2_12		0x01 /* M3 of 2 */
 
 # define M_12_ES1	0x19F
-# define M_12_ES1	0x0E
+# define N_12_ES1	0x0E
 # define FSL_12_ES1 0x03
 # define M2_12_ES1  0x1 /* M3 of 2 */
 
