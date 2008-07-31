@@ -147,8 +147,14 @@ omap3430labrador_config :    unconfig
 	@./mkconfig $(@:_config=) arm omap3 omap3430labrador
 
 omap3evm_config :	unconfig
-
 	@./mkconfig $(@:_config=) arm omap3 omap3evm
+
+overo_config :	unconfig
+	@./mkconfig $(@:_config=) arm omap3 overo
+
+omap3530beagle_config :    unconfig
+
+	@./mkconfig $(@:_config=) arm omap3 omap3530beagle
 
 #########################################################################
 

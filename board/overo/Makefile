@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2000
+# (C) Copyright 2000, 2001, 2002
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
 # See file CREDITS for list of people who contributed to this
@@ -23,60 +23,25 @@
 
 include $(TOPDIR)/config.mk
 
-# CFLAGS += -DET_DEBUG -DDEBUG
+LIB	= lib$(BOARD).a
 
-LIB	= libdrivers.a
-OBJS	= serial.o ns16550.o onenand.o
+OBJS	:= overo.o 
+SOBJS	:= platform.o
 
-ifeq ($(BOARD), omap3430sdp)
-OBJS 	+= k9f1g08r0a.o
-endif
+$(LIB):	$(OBJS) $(SOBJS)
+	$(AR) crv $@ $^
 
-ifeq ($(BOARD), omap3430labrador)
-OBJS 	+= k9f1g08r0a.o
-endif
+clean:
+	rm -f $(SOBJS) $(OBJS)
 
-ifeq ($(BOARD), omap3530beagle)
-OBJS 	+= k9f1g08r0a.o
-endif
-
-ifeq ($(BOARD), omap3evm)
-OBJS 	+= k9f1g08r0a.o
-endif
-
-ifeq ($(BOARD), overo)
-OBJS 	+= k9f1g08r0a.o
-endif
-
-ifeq ($(BOARD), omap2420h4) 
-OBJS 	+= k9k1216.o
-endif
-
-ifeq ($(BOARD), omap2430sdp)
-OBJS    += k9k1216.o
-endif
-
-ifeq ($(BOARD), omap1710h3)
-OBJS    += k9f5616.o
-endif
-
-
-## Disabled for now:
-##	  cs8900.o ct69000.o dataflash.o dc2114x.o ds1722.o \
-##	  lan91c96.o mw_eeprom.o natsemi.o \
-##	  smc91111.o smiLynxEM.o spi_eeprom.o sym53c8xx.o \
-##
-
-all:	$(LIB)
-
-$(LIB):	$(OBJS)
-	$(AR) crv $@ $(OBJS)
+distclean:	clean
+	rm -f $(LIB) core *.bak .depend
 
 #########################################################################
 
-.depend:	Makefile $(OBJS:.o=.c)
-		$(CC) -M $(CFLAGS) $(OBJS:.o=.c) > $@
+.depend:	Makefile $(SOBJS:.o=.S) $(OBJS:.o=.c)
+		$(CC) -M $(CPPFLAGS) $(SOBJS:.o=.S) $(OBJS:.o=.c) > $@
 
-sinclude .depend
+-include .depend
 
 #########################################################################
