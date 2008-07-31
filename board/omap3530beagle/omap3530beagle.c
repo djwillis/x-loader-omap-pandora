@@ -209,7 +209,7 @@ u32 wait_on_value(u32 read_bit_mask, u32 match_value, u32 read_addr, u32 bound)
 			return 1;
 		if (i == bound)
 			return 0;
-	} while 1;
+	} while (1);
 }
 
 #ifdef CFG_3430SDRAM_DDR
