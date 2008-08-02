@@ -31,6 +31,8 @@
  */
 
 #include <common.h>
+#include <part.h>
+#include <fat.h>
 #include <asm/arch/mem.h>
 
 #ifdef CFG_PRINTF
@@ -57,8 +59,9 @@ init_fnc_t *init_sequence[] = {
 void start_armboot (void)
 {
   	init_fnc_t **init_fnc_ptr;
- 	int i;
+ 	int i, size;
 	uchar *buf;
+	block_dev_desc_t *dev_desc = NULL;
 
    	for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
 		if ((*init_fnc_ptr)() != 0) {
@@ -70,14 +73,24 @@ void start_armboot (void)
 
 #ifdef CONFIG_MMC
 	/* first try mmc */
-	buf += mmc_boot(buf);
+	if (mmc_init(1)) {
+		dev_desc = mmc_get_dev(0);
+		fat_register_device(dev_desc, 1);
+		size = file_fat_read("u-boot.bin", buf, 0);
+		if (size > 0) {
+#ifdef CFG_PRINTF
+			printf("Booting from mmc\n");
+#endif
+			buf += size;
+		}
+	}
 #endif
 
 	if (buf == (uchar *)CFG_LOADADDR) {
-		/* if no u-boot on mmc, try onenand and nand */
+		/* if no u-boot on mmc, try onenand or nand, depending upon sysboot */
 		if (get_mem_type() == GPMC_ONENAND){
 #ifdef CFG_PRINTF
-       			printf("Booting from onenand . . .\n");
+       			printf("Booting from onenand\n");
 #endif
         		for (i = ONENAND_START_BLOCK; i < ONENAND_END_BLOCK; i++){
         			if (!onenand_read_block(buf, i))
@@ -87,7 +100,7 @@ void start_armboot (void)
 
 		if (get_mem_type() == GPMC_NAND){
 #ifdef CFG_PRINTF
-       			printf("Booting from nand . . .\n");
+       			printf("Booting from nand\n");
 #endif
         		for (i = NAND_UBOOT_START; i < NAND_UBOOT_END; i+= NAND_BLOCK_SIZE){
         			if (!nand_read_block(buf, i))
@@ -101,7 +114,6 @@ void start_armboot (void)
 		hang();
 
 	/* go run U-Boot and never return */
-  	printf("Starting OS Bootloader...\n");
  	((init_fnc_t *)CFG_LOADADDR)();
 
 	/* should never come here */
@@ -113,6 +125,8 @@ void hang (void)
 	board_hang();
 
 	/* if board_hang() returns, hange here */
+#ifdef CFG_PRINTF
 	printf("X-Loader hangs\n");
+#endif
 	for (;;);
 }
