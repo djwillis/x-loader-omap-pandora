@@ -26,7 +26,7 @@ include $(TOPDIR)/config.mk
 # CFLAGS += -DET_DEBUG -DDEBUG
 
 LIB	= libdrivers.a
-OBJS	= serial.o ns16550.o onenand.o
+OBJS	= serial.o ns16550.o onenand.o omap24xx_i2c.o
 
 ifeq ($(BOARD), omap3430sdp)
 OBJS 	+= k9f1g08r0a.o

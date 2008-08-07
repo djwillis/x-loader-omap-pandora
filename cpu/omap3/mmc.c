@@ -22,19 +22,30 @@
  * MA 02111-1307 USA
  */
 
-
 #include <config.h>
 #include <common.h>
-#include <mmc.h>
 #include <part.h>
+#include <fat.h>
+#include <mmc.h>
+#include <i2c.h>
 
-#ifdef CFG_CMD_MMC
-
-#include "mmc_host_def.h"
-#include "mmc_protocol.h"
-
-#define OMAP_MMC_MASTER_CLOCK   96000000
-extern int fat_register_device(block_dev_desc_t *dev_desc, int part_no);
+const unsigned short mmc_transspeed_val[15][4] = {
+	{CLKD(10, 1), CLKD(10, 10), CLKD(10, 100), CLKD(10, 1000)},
+	{CLKD(12, 1), CLKD(12, 10), CLKD(12, 100), CLKD(12, 1000)},
+	{CLKD(13, 1), CLKD(13, 10), CLKD(13, 100), CLKD(13, 1000)},
+	{CLKD(15, 1), CLKD(15, 10), CLKD(15, 100), CLKD(15, 1000)},
+	{CLKD(20, 1), CLKD(20, 10), CLKD(20, 100), CLKD(20, 1000)},
+	{CLKD(26, 1), CLKD(26, 10), CLKD(26, 100), CLKD(26, 1000)},
+	{CLKD(30, 1), CLKD(30, 10), CLKD(30, 100), CLKD(30, 1000)},
+	{CLKD(35, 1), CLKD(35, 10), CLKD(35, 100), CLKD(35, 1000)},
+	{CLKD(40, 1), CLKD(40, 10), CLKD(40, 100), CLKD(40, 1000)},
+	{CLKD(45, 1), CLKD(45, 10), CLKD(45, 100), CLKD(45, 1000)},
+	{CLKD(52, 1), CLKD(52, 10), CLKD(52, 100), CLKD(52, 1000)},
+	{CLKD(55, 1), CLKD(55, 10), CLKD(55, 100), CLKD(55, 1000)},
+	{CLKD(60, 1), CLKD(60, 10), CLKD(60, 100), CLKD(60, 1000)},
+	{CLKD(70, 1), CLKD(70, 10), CLKD(70, 100), CLKD(70, 1000)},
+	{CLKD(80, 1), CLKD(80, 10), CLKD(80, 100), CLKD(80, 1000)}
+};
 
 mmc_card_data cur_card_data;
 static block_dev_desc_t mmc_blk_dev;
@@ -44,9 +55,21 @@ block_dev_desc_t *mmc_get_dev(int dev)
 	return ((block_dev_desc_t *) &mmc_blk_dev);
 }
 
+void twl4030_mmc_config(void)
+{
+	unsigned char data;
+
+	data = 0x20;
+	i2c_write(0x4B, 0x82, 1, &data, 1);
+	data = 0x2;
+	i2c_write(0x4B, 0x85, 1, &data, 1);
+}
+
 unsigned char mmc_board_init(void)
 {
 	unsigned int value = 0;
+
+	twl4030_mmc_config();
 
 	value = CONTROL_PBIAS_LITE;
 	CONTROL_PBIAS_LITE = value | (1 << 2) | (1 << 1) | (1 << 9);
@@ -102,8 +125,8 @@ unsigned char mmc_clock_config(unsigned int iclk, unsigned short clk_div)
 	mmc_reg_out(OMAP_HSMMC_SYSCTL,
 		    ICE_MASK | CLKD_MASK, (val << CLKD_OFFSET) | ICE_OSCILLATE);
 
-	while ((OMAP_HSMMC_SYSCTL & ICS_MASK) == ICS_NOTREADY);
-
+	while ((OMAP_HSMMC_SYSCTL & ICS_MASK) == ICS_NOTREADY) {
+	}
 
 	OMAP_HSMMC_SYSCTL |= CEN_ENABLE;
 	return 1;
@@ -112,7 +135,6 @@ unsigned char mmc_clock_config(unsigned int iclk, unsigned short clk_div)
 unsigned char mmc_init_setup(void)
 {
 	unsigned int reg_val;
-	unsigned int val = 0;
 
 	mmc_board_init();
 
@@ -143,10 +165,10 @@ unsigned char mmc_init_setup(void)
 unsigned char mmc_send_cmd(unsigned int cmd, unsigned int arg,
 			   unsigned int *response)
 {
-	unsigned int mmc_stat;
+	volatile unsigned int mmc_stat;
 
-	while ((OMAP_HSMMC_PSTATE & DATI_MASK) == DATI_CMDDIS);
-
+	while ((OMAP_HSMMC_PSTATE & DATI_MASK) == DATI_CMDDIS) {
+	}
 
 	OMAP_HSMMC_BLK = BLEN_512BYTESLEN | NBLK_STPCNT;
 	OMAP_HSMMC_STAT = 0xFFFFFFFF;
@@ -161,8 +183,7 @@ unsigned char mmc_send_cmd(unsigned int cmd, unsigned int arg,
 		} while (mmc_stat == 0);
 
 		if ((mmc_stat & ERRI_MASK) != 0)
-			return (unsigned char)mmc_stat;
-
+			return (unsigned char) mmc_stat;
 
 		if (mmc_stat & CC_MASK) {
 			OMAP_HSMMC_STAT = CC_MASK;
@@ -180,7 +201,7 @@ unsigned char mmc_send_cmd(unsigned int cmd, unsigned int arg,
 
 unsigned char mmc_read_data(unsigned int *output_buf)
 {
-	unsigned int mmc_stat;
+	volatile unsigned int mmc_stat;
 	unsigned int read_count = 0;
 
 	/*
@@ -192,7 +213,7 @@ unsigned char mmc_read_data(unsigned int *output_buf)
 		} while (mmc_stat == 0);
 
 		if ((mmc_stat & ERRI_MASK) != 0)
-			return (unsigned char)mmc_stat;
+			return (unsigned char) mmc_stat;
 
 		if (mmc_stat & BRR_MASK) {
 			unsigned int k;
@@ -351,7 +372,7 @@ unsigned char mmc_read_cardsize(mmc_card_data *mmc_dev_data,
 			err = mmc_send_cmd(MMC_CMD8, argument, resp);
 			if (err != 1)
 				return err;
-			err = mmc_read_data((unsigned int *)&ext_csd);
+			err = mmc_read_data((unsigned int *) &ext_csd);
 			if (err != 1)
 				return err;
 			mmc_dev_data->size = ext_csd.sectorcount;
@@ -371,11 +392,9 @@ unsigned char mmc_read_cardsize(mmc_card_data *mmc_dev_data,
 		card_size = (cur_csd->c_size_lsb & MMC_CSD_C_SIZE_LSB_MASK) |
 		    ((cur_csd->c_size_msb & MMC_CSD_C_SIZE_MSB_MASK)
 		     << MMC_CSD_C_SIZE_MSB_OFFSET);
-
 		blk_no = (card_size + 1) * count;
 		blk_len = 1 << cur_csd->read_bl_len;
 		size = blk_no * blk_len;
-
 		mmc_dev_data->size = size / MMCSD_SECTOR_SIZE;
 		if (mmc_dev_data->size == 0)
 			return 0;
@@ -385,7 +404,7 @@ unsigned char mmc_read_cardsize(mmc_card_data *mmc_dev_data,
 
 unsigned char omap_mmc_read_sect(unsigned int start_sec, unsigned int num_bytes,
 				 mmc_card_data *mmc_c,
-				 unsigned int *output_buf)
+				 unsigned long *output_buf)
 {
 	unsigned char err;
 	unsigned int argument;
@@ -410,8 +429,7 @@ unsigned char omap_mmc_read_sect(unsigned int start_sec, unsigned int num_bytes,
 		if (err != 1)
 			return err;
 
-
-		err = mmc_read_data(output_buf);
+		err = mmc_read_data((unsigned int *) output_buf);
 		if (err != 1)
 			return err;
 
@@ -427,13 +445,14 @@ unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 	unsigned char ret_val;
 	unsigned int argument;
 	unsigned int resp[4];
-	unsigned int trans_fact, trans_unit, retries = 2;
-	unsigned int max_dtr;
-	int dsor;
+	unsigned int trans_clk, trans_fact, trans_unit, retries = 2;
 	mmc_csd_reg_t Card_CSD;
 	unsigned char trans_speed;
 
-	mmc_init_setup();
+	ret_val = mmc_init_setup();
+
+	if (ret_val != 1)
+		return ret_val;
 
 	do {
 		ret_val = mmc_detect_card(mmc_card_cur);
@@ -445,10 +464,10 @@ unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 	if (ret_val != 1)
 		return ret_val;
 
-	((unsigned int *)&Card_CSD)[3] = resp[3];
-	((unsigned int *)&Card_CSD)[2] = resp[2];
-	((unsigned int *)&Card_CSD)[1] = resp[1];
-	((unsigned int *)&Card_CSD)[0] = resp[0];
+	((unsigned int *) &Card_CSD)[3] = resp[3];
+	((unsigned int *) &Card_CSD)[2] = resp[2];
+	((unsigned int *) &Card_CSD)[1] = resp[1];
+	((unsigned int *) &Card_CSD)[0] = resp[0];
 
 	if (mmc_card_cur->card_type == MMC_CARD)
 		mmc_card_cur->version = Card_CSD.spec_vers;
@@ -472,15 +491,9 @@ unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 	trans_unit >>= 0;
 	trans_fact >>= 3;
 
-	max_dtr = tran_exp[trans_unit] * tran_mant[trans_fact];
-	dsor = OMAP_MMC_MASTER_CLOCK / max_dtr;
+	trans_clk = mmc_transspeed_val[trans_fact - 1][trans_unit] * 2;
+	ret_val = mmc_clock_config(CLK_MISC, trans_clk);
 
-	if (dsor == 4)
-		dsor = 5;
-	if (dsor == 3)
-		dsor = 4;
-
-	ret_val = mmc_clock_config(CLK_MISC, dsor);
 	if (ret_val != 1)
 		return ret_val;
 
@@ -502,56 +515,51 @@ unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 
 	return 1;
 }
-
-unsigned long mmc_bread(int dev_num, ulong blknr, ulong blkcnt, ulong *dst)
+unsigned long mmc_bread(int dev_num, unsigned long blknr, lbaint_t blkcnt,
+			void *dst)
 {
 	omap_mmc_read_sect(blknr, (blkcnt * MMCSD_SECTOR_SIZE), &cur_card_data,
-			   (unsigned long *)dst);
+			   (unsigned long *) dst);
+	return 1;
 }
 
 int mmc_init(int verbose)
 {
-	unsigned char ret = 0;
+	unsigned char ret;
 
 	ret = configure_mmc(&cur_card_data);
-	if (ret == 0)
+
+	if (ret == 1) {
+		mmc_blk_dev.if_type = IF_TYPE_MMC;
+		mmc_blk_dev.part_type = PART_TYPE_DOS;
+		mmc_blk_dev.dev = 0;
+		mmc_blk_dev.lun = 0;
+		mmc_blk_dev.type = 0;
+
+		/* FIXME fill in the correct size (is set to 32MByte) */
+		mmc_blk_dev.blksz = MMCSD_SECTOR_SIZE;
+		mmc_blk_dev.lba = 0x10000;
+		mmc_blk_dev.removable = 0;
+		mmc_blk_dev.block_read = mmc_bread;
+
+		fat_register_device(&mmc_blk_dev, 1);
+		return 1;
+	}
+	else 
 		return 0;
-
-	mmc_blk_dev.if_type = IF_TYPE_MMC;
-	mmc_blk_dev.part_type = PART_TYPE_DOS;
-	mmc_blk_dev.dev = 0;
-	mmc_blk_dev.lun = 0;
-	mmc_blk_dev.type = 0;
-
-	/* FIXME fill in the correct size (is set to 32MByte) */
-	mmc_blk_dev.blksz = MMCSD_SECTOR_SIZE;
-	mmc_blk_dev.lba = 0x10000;
-	mmc_blk_dev.removable = 0;
-	mmc_blk_dev.block_read = mmc_bread;
-
-	fat_register_device(&mmc_blk_dev, 1);
-
-	return 1;
 }
 
-int mmc_read(unsigned int src, unsigned char *dst, int size)
+int mmc_read(ulong src, uchar *dst, int size)
 {
-	/*
-	 * NOT Implemented
-	 */
-}
-int mmc_write(unsigned char *src, unsigned long dst, int size)
-{
-	/*
-	 * NOT Implemented
-	 */
+	return 0;
 }
 
-int mmc2info(unsigned int addr)
+int mmc_write(uchar *src, ulong dst, int size)
 {
-	/*
-	 * NOT Implemented
-	 */
+	return 0;
 }
-#endif
 
+int mmc2info(ulong addr)
+{
+	return 0;
+}

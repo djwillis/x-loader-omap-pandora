@@ -35,13 +35,22 @@
 #include <fat.h>
 #include <asm/arch/mem.h>
 
+const char version_string[] =
+	"Texas Instruments X-Loader 1.4.2 (" __DATE__ " - " __TIME__ ")";
+
 #ifdef CFG_PRINTF
 int print_info(void)
 {
-        printf("\n\nTexas Instruments X-Loader 1.41sms\n");
+        printf("\n\n%s\n", version_string);
 	return 0;
 }
 #endif
+
+static int init_func_i2c (void)
+{
+	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	return 0;
+}
 
 typedef int (init_fnc_t) (void);
 
@@ -53,6 +62,7 @@ init_fnc_t *init_sequence[] = {
 	print_info,
 #endif
   	nand_init,		/* board specific nand init */
+	init_func_i2c,
   	NULL,
 };
 
@@ -74,8 +84,6 @@ void start_armboot (void)
 #ifdef CONFIG_MMC
 	/* first try mmc */
 	if (mmc_init(1)) {
-		dev_desc = mmc_get_dev(0);
-		fat_register_device(dev_desc, 1);
 		size = file_fat_read("u-boot.bin", buf, 0);
 		if (size > 0) {
 #ifdef CFG_PRINTF
@@ -83,8 +91,8 @@ void start_armboot (void)
 #endif
 			buf += size;
 		}
-	}
 #endif
+	}
 
 	if (buf == (uchar *)CFG_LOADADDR) {
 		/* if no u-boot on mmc, try onenand or nand, depending upon sysboot */

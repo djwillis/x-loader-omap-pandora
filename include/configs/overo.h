@@ -48,6 +48,11 @@
 #if defined(CONFIG_MMC)
 	#define CFG_CMD_MMC	1
 	#define CFG_CMD_FAT	1
+	#define CFG_I2C_SPEED		100000
+	#define CFG_I2C_SLAVE		1
+	#define CFG_I2C_BUS		0
+	#define CFG_I2C_BUS_SELECT	1
+	#define CONFIG_DRIVER_OMAP34XX_I2C 1
 #endif
 
 #include <asm/arch/cpu.h>        /* get chip and board defs */

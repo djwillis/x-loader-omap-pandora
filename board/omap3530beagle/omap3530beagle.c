@@ -66,6 +66,10 @@ static inline void delay(unsigned long loops)
 			  "bne 1b":"=r" (loops):"0"(loops));
 }
 
+void udelay (unsigned long usecs) {
+	delay(usecs);
+}
+
 /*****************************************
  * Routine: board_init
  * Description: Early hardware init.
@@ -596,6 +600,28 @@ void per_clocks_enable(void)
 
 #endif
 
+#ifdef CONFIG_DRIVER_OMAP34XX_I2C
+	/* Turn on all 3 I2C clocks */
+	sr32(CM_FCLKEN1_CORE, 15, 3, 0x7);
+	sr32(CM_ICLKEN1_CORE, 15, 3, 0x7);	/* I2C1,2,3 = on */
+#endif
+
+	/* Enable the ICLK for 32K Sync Timer as its used in udelay */
+	sr32(CM_ICLKEN_WKUP, 2, 1, 0x1);
+
+	sr32(CM_FCLKEN_IVA2, 0, 32, FCK_IVA2_ON);
+	sr32(CM_FCLKEN1_CORE, 0, 32, FCK_CORE1_ON);
+	sr32(CM_ICLKEN1_CORE, 0, 32, ICK_CORE1_ON);
+	sr32(CM_ICLKEN2_CORE, 0, 32, ICK_CORE2_ON);
+	sr32(CM_FCLKEN_WKUP, 0, 32, FCK_WKUP_ON);
+	sr32(CM_ICLKEN_WKUP, 0, 32, ICK_WKUP_ON);
+	sr32(CM_FCLKEN_DSS, 0, 32, FCK_DSS_ON);
+	sr32(CM_ICLKEN_DSS, 0, 32, ICK_DSS_ON);
+	sr32(CM_FCLKEN_CAM, 0, 32, FCK_CAM_ON);
+	sr32(CM_ICLKEN_CAM, 0, 32, ICK_CAM_ON);
+	sr32(CM_FCLKEN_PER, 0, 32, FCK_PER_ON);
+	sr32(CM_ICLKEN_PER, 0, 32, ICK_PER_ON);
+
 	/* Enable GPIO5 clocks for blinky LEDs */
 	sr32(CM_FCLKEN_PER, 16, 1, 0x1);	/* FCKen GPIO5 */
 	sr32(CM_ICLKEN_PER, 16, 1, 0x1);	/* ICKen GPIO5 */
@@ -707,6 +733,16 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(DSS_DATA20),     (IEN  | PTD | DIS | M4)) /*GPIO_90*/\
 	MUX_VAL(CP(DSS_DATA21),     (IEN  | PTD | DIS | M4)) /*GPIO_91*/\
 	MUX_VAL(CP(CAM_WEN),        (IEN  | PTD | DIS | M4)) /*GPIO_167*/\
+	MUX_VAL(CP(MMC1_CLK),       (IDIS | PTU | EN  | M0)) /*MMC1_CLK*/\
+	MUX_VAL(CP(MMC1_CMD),       (IEN  | PTU | EN  | M0)) /*MMC1_CMD*/\
+	MUX_VAL(CP(MMC1_DAT0),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT0*/\
+	MUX_VAL(CP(MMC1_DAT1),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT1*/\
+	MUX_VAL(CP(MMC1_DAT2),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT2*/\
+	MUX_VAL(CP(MMC1_DAT3),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT3*/\
+	MUX_VAL(CP(MMC1_DAT4),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT4*/\
+	MUX_VAL(CP(MMC1_DAT5),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT5*/\
+	MUX_VAL(CP(MMC1_DAT6),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT6*/\
+	MUX_VAL(CP(MMC1_DAT7),      (IEN  | PTU | EN  | M0)) /*MMC1_DAT7*/\
 	MUX_VAL(CP(UART1_TX),       (IDIS | PTD | DIS | M0)) /*UART1_TX*/\
 	MUX_VAL(CP(UART1_RTS),      (IDIS | PTD | DIS | M4)) /*GPIO_149*/\
 	MUX_VAL(CP(UART1_CTS),      (IDIS | PTD | DIS | M4)) /*GPIO_150*/\
@@ -715,6 +751,14 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(UART3_RTS_SD),   (IDIS | PTD | DIS | M0)) /*UART3_RTS_SD */\
 	MUX_VAL(CP(UART3_RX_IRRX),  (IEN  | PTD | DIS | M0)) /*UART3_RX_IRRX*/\
 	MUX_VAL(CP(UART3_TX_IRTX),  (IDIS | PTD | DIS | M0)) /*UART3_TX_IRTX*/\
+	MUX_VAL(CP(I2C1_SCL),       (IEN  | PTU | EN  | M0)) /*I2C1_SCL*/\
+	MUX_VAL(CP(I2C1_SDA),       (IEN  | PTU | EN  | M0)) /*I2C1_SDA*/\
+	MUX_VAL(CP(I2C2_SCL),       (IEN  | PTU | EN  | M0)) /*I2C2_SCL*/\
+	MUX_VAL(CP(I2C2_SDA),       (IEN  | PTU | EN  | M0)) /*I2C2_SDA*/\
+	MUX_VAL(CP(I2C3_SCL),       (IEN  | PTU | EN  | M0)) /*I2C3_SCL*/\
+	MUX_VAL(CP(I2C3_SDA),       (IEN  | PTU | EN  | M0)) /*I2C3_SDA*/\
+	MUX_VAL(CP(I2C4_SCL),       (IEN  | PTU | EN  | M0)) /*I2C4_SCL*/\
+	MUX_VAL(CP(I2C4_SDA),       (IEN  | PTU | EN  | M0)) /*I2C4_SDA*/\
 	MUX_VAL(CP(McBSP1_DX),      (IEN  | PTD | DIS | M4)) /*GPIO_158*/\
 	MUX_VAL(CP(SYS_32K),        (IEN  | PTD | DIS | M0)) /*SYS_32K*/\
 	MUX_VAL(CP(SYS_BOOT0),      (IEN  | PTD | DIS | M4)) /*GPIO_2 */\
@@ -847,39 +891,23 @@ void blinkLEDs()
 	}
 }
 
-typedef int (mmc_boot_addr) (void);
-int mmc_boot(unsigned char *buf)
-{
-
-	long size = 0;
-#ifdef CFG_CMD_FAT
-	block_dev_desc_t *dev_desc = NULL;
-	unsigned char ret = 0;
-
-	printf("Starting X-loader on MMC \n");
-
-	ret = mmc_init(1);
-	if (ret == 0) {
-		printf("\n MMC init failed \n");
-		return 0;
-	}
-
-	dev_desc = mmc_get_dev(0);
-	fat_register_device(dev_desc, 1);
-	size = file_fat_read("u-boot.bin", buf, 0);
-	if (size == -1)
-		return 0;
-
-	printf("\n%ld Bytes Read from MMC \n", size);
-
-	printf("Starting OS Bootloader from MMC...\n");
-#endif
-	return size;
-}
-
 /* optionally do something like blinking LED */
 void board_hang(void)
 {
 	while (1)
 		blinkLEDs();
+}
+
+/******************************************************************************
+ * Dummy function to handle errors for EABI incompatibility
+ *****************************************************************************/
+void raise(void)
+{
+}
+
+/******************************************************************************
+ * Dummy function to handle errors for EABI incompatibility
+ *****************************************************************************/
+void abort(void)
+{
 }
