@@ -536,6 +536,8 @@ int misc_init_r(void)
 	byte = 0x09;
 	i2c_write(0x4B, 0x79, 1, &byte, 1);
 
+	udelay(5000);
+
 	return 0;
 }
 
