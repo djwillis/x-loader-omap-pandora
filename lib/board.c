@@ -48,7 +48,9 @@ int print_info(void)
 
 static int init_func_i2c (void)
 {
+#ifdef CONFIG_MMC
 	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+#endif
 	return 0;
 }
 
@@ -62,7 +64,9 @@ init_fnc_t *init_sequence[] = {
 	print_info,
 #endif
   	nand_init,		/* board specific nand init */
+#ifdef CONFIG_MMC
 	init_func_i2c,
+#endif
   	NULL,
 };
 
@@ -93,8 +97,8 @@ void start_armboot (void)
 #endif
 			buf += size;
 		}
-#endif
 	}
+#endif
 
 	if (buf == (uchar *)CFG_LOADADDR) {
 		/* if no u-boot on mmc, try onenand or nand, depending upon sysboot */
@@ -106,9 +110,7 @@ void start_armboot (void)
         			if (!onenand_read_block(buf, i))
         				buf += ONENAND_BLOCK_SIZE;
         		}
-		}
-
-		if (get_mem_type() == GPMC_NAND){
+		} else if (get_mem_type() == GPMC_NAND){
 #ifdef CFG_PRINTF
        			printf("Booting from nand\n");
 #endif

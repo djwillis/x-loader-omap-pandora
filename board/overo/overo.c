@@ -529,6 +529,7 @@ void s_init(void)
  ********************************************************/
 int misc_init_r(void)
 {
+#ifdef CONFIG_MMC
 	/* REMOVE!! for proto boards only */
 	/* set vaux2 to 2.8V */
 	unsigned char byte = 0x20;
@@ -537,7 +538,7 @@ int misc_init_r(void)
 	i2c_write(0x4B, 0x79, 1, &byte, 1);
 
 	udelay(5000);
-
+#endif
 	return 0;
 }
 
