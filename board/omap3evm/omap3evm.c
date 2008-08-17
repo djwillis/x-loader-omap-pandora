@@ -791,37 +791,20 @@ int nand_init(void)
 	return 0;
 }
 
-
-typedef int (mmc_boot_addr) (void);
-int mmc_boot(unsigned char *buf)
-{
-
-       long size = 0;
-#ifdef CFG_CMD_FAT
-       block_dev_desc_t *dev_desc = NULL;
-       unsigned char ret = 0;
-
-       printf("Starting X-loader on MMC \n");
-
-       ret = mmc_init(1);
-       if(ret == 0){
-               printf("\n MMC init failed \n");
-               return 0;
-       }
-
-       dev_desc = mmc_get_dev(0);
-       fat_register_device(dev_desc, 1);
-       size = file_fat_read("u-boot.bin", buf, 0);
-       if (size == -1) {
-               return 0;
-       }
-       printf("\n%ld Bytes Read from MMC \n", size);
-
-       printf("Starting OS Bootloader from MMC...\n");
-#endif
-       return size;
-}
-
 /* optionally do something like blinking LED */
 void board_hang (void)
 { while (0) {};}
+
+/******************************************************************************
+ * Dummy function to handle errors for EABI incompatibility
+ *****************************************************************************/
+void raise(void)
+{
+}
+
+/******************************************************************************
+ * Dummy function to handle errors for EABI incompatibility
+ *****************************************************************************/
+void abort(void)
+{
+}
