@@ -65,6 +65,10 @@ static inline void delay(unsigned long loops)
 			  "bne 1b":"=r" (loops):"0"(loops));
 }
 
+void udelay (unsigned long usecs) {
+	delay(usecs);
+}
+
 /*****************************************
  * Routine: board_init
  * Description: Early hardware init.
