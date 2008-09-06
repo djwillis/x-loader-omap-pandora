@@ -225,43 +225,54 @@ u32 wait_on_value(u32 read_bit_mask, u32 match_value, u32 read_addr, u32 bound)
  *********************************************************************/
 void config_3430sdram_ddr(void)
 {
-	/* reset sdrc controller */
-	__raw_writel(SOFTRESET, SDRC_SYSCONFIG);
-	wait_on_value(BIT0, BIT0, SDRC_STATUS, 12000000);
-	__raw_writel(0, SDRC_SYSCONFIG);
+        /* reset sdrc controller */
+        __raw_writel(SOFTRESET, SDRC_SYSCONFIG);
+        wait_on_value(BIT0, BIT0, SDRC_STATUS, 12000000);
+        __raw_writel(0, SDRC_SYSCONFIG);
 
-	/* setup sdrc to ball mux */
-	__raw_writel(SDP_SDRC_SHARING, SDRC_SHARING);
+        /* setup sdrc to ball mux */
+        __raw_writel(SDP_SDRC_SHARING, SDRC_SHARING);
 
-	/* set mdcfg */
-	__raw_writel(SDP_SDRC_MDCFG_0_DDR, SDRC_MCFG_0);
+        /* SDRC put in weak */
+//        (*(unsigned int*)0x6D00008C) = 0x00000020;
 
-	/* set timing */
-	if ((get_mem_type() == GPMC_ONENAND) || (get_mem_type() == MMC_ONENAND)) {
-		__raw_writel(INFINEON_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_0);
-		__raw_writel(INFINEON_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_0);
-	}
-	if ((get_mem_type() == GPMC_NAND) || (get_mem_type() == MMC_NAND)) {
-		__raw_writel(MICRON_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_0);
-		__raw_writel(MICRON_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_0);
-	}
+        /* SDRC_MCFG0 register */
+        (*(unsigned int*)0x6D000080) = 0x02584099;//from Micron
 
-	__raw_writel(SDP_SDRC_RFR_CTRL, SDRC_RFR_CTRL);
-	__raw_writel(SDP_SDRC_POWER_POP, SDRC_POWER);
+        /* SDRC_ACTIM_CTRLA0 register */
+//our value        (*(unsigned int*)0x6D00009c) = 0xa29db4c6;// for 166M
+        (*(unsigned int*)0x6D00009c) = 0xaa9db4c6;// for 166M from rkw
 
-	/* init sequence for mDDR/mSDR using manual commands (DDR is different) */
-	__raw_writel(CMD_NOP, SDRC_MANUAL_0);
-	delay(5000);
-	__raw_writel(CMD_PRECHARGE, SDRC_MANUAL_0);
-	__raw_writel(CMD_AUTOREFRESH, SDRC_MANUAL_0);
-	__raw_writel(CMD_AUTOREFRESH, SDRC_MANUAL_0);
+        /* SDRC_ACTIM_CTRLB0 register */
+//from micron   (*(unsigned int*)0x6D0000a0) = 0x12214;// for 166M
 
-	/* set mr0 */
-	__raw_writel(SDP_SDRC_MR_0_DDR, SDRC_MR_0);
+//        (*(unsigned int*)0x6D0000a0) = 0x00011417; our value
+        (*(unsigned int*)0x6D0000a0) = 0x00011517;
 
-	/* set up dll */
-	__raw_writel(SDP_SDRC_DLLAB_CTRL, SDRC_DLLA_CTRL);
-	delay(0x2000);	/* give time to lock */
+        /* SDRC_RFR_CTRL0 register */
+//from micron   (*(unsigned int*)0x6D0000a4) =0x54601; // for 166M
+
+        (*(unsigned int*)0x6D0000a4) =0x0004DC01;
+
+        /* Disble Power Down of CKE cuz of 1 CKE on combo part */
+        (*(unsigned int*)0x6D000070) = 0x00000081;
+
+        /* SDRC_Manual command register */
+        (*(unsigned int*)0x6D0000a8) = 0x00000000; // NOP command
+        delay(5000);
+        (*(unsigned int*)0x6D0000a8) = 0x00000001; // Precharge command
+        (*(unsigned int*)0x6D0000a8) = 0x00000002; // Auto-refresh command
+        (*(unsigned int*)0x6D0000a8) = 0x00000002; // Auto-refresh command
+
+        /* SDRC MR0 register */
+        (*(int*)0x6D000084) = 0x00000032; // Burst length =4
+        // CAS latency = 3
+        // Write Burst = Read Burst
+        // Serial Mode
+
+        /* SDRC DLLA control register */
+        (*(unsigned int*)0x6D000060) = 0x0000A;
+        delay(0x20000); // some delay
 
 }
 #endif /* CFG_3430SDRAM_DDR */
