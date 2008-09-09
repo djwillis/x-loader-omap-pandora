@@ -25,7 +25,7 @@ include $(TOPDIR)/config.mk
 
 LIB	= lib$(BOARD).a
 
-OBJS	:= omap3530pandora.o i2c_min.o
+OBJS	:= pandora.o
 SOBJS	:= platform.o
 
 $(LIB):	$(OBJS) $(SOBJS)

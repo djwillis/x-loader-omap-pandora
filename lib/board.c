@@ -93,7 +93,8 @@ void start_armboot (void)
 		size = file_fat_read("u-boot.bin", buf, 0);
 		if (size > 0) {
 #ifdef CFG_PRINTF
-			printf("Booting from mmc\n");
+			printf("Starting from MMC card \n");
+			printf("\n%ld Bytes Read from MMC \n", size);
 #endif
 			buf += size;
 		}
@@ -124,6 +125,10 @@ void start_armboot (void)
 
 	if (buf == (uchar *)CFG_LOADADDR)
 		hang();
+
+#ifdef CFG_PRINTF
+	printf("Starting Stage 2 Bootloader...\n");
+#endif
 
 	/* go run U-Boot and never return */
  	((init_fnc_t *)CFG_LOADADDR)();

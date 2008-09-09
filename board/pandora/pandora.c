@@ -4,6 +4,9 @@
  * Jian Zhang <jzhang@ti.com>
  * Richard Woodruff <r-woodruff2@ti.com>
  *
+ * Modified for the Pandora
+ * John Willis <source@distant-earth.com>
+ *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
@@ -34,10 +37,10 @@
 #include <asm/arch/sys_info.h>
 #include <asm/arch/clocks.h>
 #include <asm/arch/mem.h>
-#include <i2c.h>
-#include <mmc.h>
+//#include <i2c.h>
+//#include <mmc.h>
 
-#define	CLK_MULT	3
+//#define	CLK_MULT	3
 /* Used to index into DPLL parameter tables */
 struct dpll_param {
 	unsigned int m;
@@ -58,27 +61,8 @@ extern dpll_param *get_per_dpll_param(void);
 #define __raw_writel(v,a) (*(volatile unsigned int *)(a) = (v))
 #define __raw_readw(a)    (*(volatile unsigned short *)(a))
 #define __raw_writew(v,a) (*(volatile unsigned short *)(a) = (v))
-extern int fat_register_device(block_dev_desc_t * dev_desc, int part_no);
-extern block_dev_desc_t *mmc_get_dev(int dev);
-
-#if 0
-#define WAV_LOADADDR	0x81000000
-#define DEFAULT_BMP1	0x80600000
-#define DEFAULT_BMP2	0x80700000
-#define DEFAULT_BMP3	0x80800000
-#define DEFAULT_BMP4	0x80900000
-#define DEFAULT_BMP5	0x80A00000
-#define DEFAULT_BMP6	0x80B00000
-#define DEFAULT_BMP7	0x80C00000
-#define DEFAULT_BMP8	0x80D00000
-#define DEFAULT_BMP9	0x80E00000
-#define DEFAULT_BMP10	0x80F00000
-#define	MAX_BMPS	10
-#define	BMP_OFFSET	0x00100000
-
-#define TRY_AUDIO	1
-#define	TRY_BMP		1
-#endif
+//extern int fat_register_device(block_dev_desc_t * dev_desc, int part_no);
+//extern block_dev_desc_t *mmc_get_dev(int dev);
 
 /*******************************************************
  * Routine: delay
@@ -88,6 +72,10 @@ static inline void delay(unsigned long loops)
 {
 	__asm__ volatile ("1:\n" "subs %0, %1, #1\n"
 			  "bne 1b":"=r" (loops):"0"(loops));
+}
+
+void udelay (unsigned long usecs) {
+	delay(usecs);
 }
 
 /*****************************************
@@ -109,6 +97,64 @@ u32 get_device_type(void)
 	return (mode >>= 8);
 }
 
+/************************************************
+ * get_sysboot_value(void) - return SYS_BOOT[4:0]
+ ************************************************/
+u32 get_sysboot_value(void)
+{
+	int mode;
+	mode = __raw_readl(CONTROL_STATUS) & (SYSBOOT_MASK);
+	return mode;
+}
+
+/*************************************************************
+ * Routine: get_mem_type(void) - returns the kind of memory connected
+ * to GPMC that we are trying to boot form. Uses SYS BOOT settings.
+ *************************************************************/
+u32 get_mem_type(void)
+{
+	u32   mem_type = get_sysboot_value();
+	switch (mem_type) {
+	case 0:
+	case 2:
+	case 4:
+	case 16:
+	case 22:
+		return GPMC_ONENAND;
+
+	case 1:
+	case 12:
+	case 15:
+	case 21:
+	case 27:
+		return GPMC_NAND;
+
+	case 3:
+	case 6:
+		return MMC_ONENAND;
+
+	case 8:
+	case 11:
+	case 14:
+	case 20:
+	case 26:
+		return GPMC_MDOC;
+
+	case 17:
+	case 18:
+	case 24:
+		return MMC_NAND;
+
+	case 7:
+	case 10:
+	case 13:
+	case 19:
+	case 25:
+	default:
+		return GPMC_NOR;
+	}
+}
+
 /******************************************
  * get_cpu_rev(void) - extract version info
  ******************************************/
@@ -125,6 +171,27 @@ u32 get_cpu_rev(void)
 	else
 		return CPU_3430_ES2;
 
+}
+
+/******************************************
+ * cpu_is_3410(void) - returns true for 3410
+ ******************************************/
+u32 cpu_is_3410(void)
+{
+	int status;
+	if (get_cpu_rev() < CPU_3430_ES2) {
+		return 0;
+	} else {
+		/* read scalability status and return 1 for 3410*/
+		status = __raw_readl(CONTROL_SCALABLE_OMAP_STATUS);
+		/* Check whether MPU frequency is set to 266 MHz which
+		 * is nominal for 3410. If yes return true else false
+		 */
+		if (((status >> 8) & 0x3) == 0x2)
+			return 1;
+		else
+			return 0;
+	}
 }
 
 /*****************************************************************
@@ -161,40 +228,6 @@ u32 wait_on_value(u32 read_bit_mask, u32 match_value, u32 read_addr, u32 bound)
 /*********************************************************************
  * config_3430sdram_ddr() - Init DDR on 3430SDP dev board.
  *********************************************************************/
-void config_3430sdram_ddr_133(void)
-{
-   /* reset sdrc controller */
-        __raw_writel(SOFTRESET, SDRC_SYSCONFIG);
-        wait_on_value(BIT0, BIT0, SDRC_STATUS, 12000000);
-        __raw_writel(0, SDRC_SYSCONFIG);
-
-        /* setup sdrc to ball mux */
-        __raw_writel(SDP_SDRC_SHARING, SDRC_SHARING);
-
-        /* set mdcfg */
-        __raw_writel(SDP_SDRC_MDCFG_0_DDR, SDRC_MCFG_0);
-
-        /* set timing */
-        __raw_writel(SDP_SDRC_ACTIM_CTRLA_0, SDRC_ACTIM_CTRLA_0);
-        __raw_writel(SDP_SDRC_ACTIM_CTRLB_0, SDRC_ACTIM_CTRLB_0);
-        __raw_writel(SDP_SDRC_RFR_CTRL, SDRC_RFR_CTRL);
-
-        /* init sequence for mDDR/mSDR using manual commands (DDR is different) */
-        __raw_writel(CMD_NOP, SDRC_MANUAL_0);
-        delay(5000);
-        __raw_writel(CMD_PRECHARGE, SDRC_MANUAL_0);
-        __raw_writel(CMD_AUTOREFRESH, SDRC_MANUAL_0);
-        __raw_writel(CMD_AUTOREFRESH, SDRC_MANUAL_0);
-
-        /* set mr0 */
-        __raw_writel(SDP_SDRC_MR_0_DDR, SDRC_MR_0);
-
-        /* set up dll */
-        __raw_writel(SDP_SDRC_DLLAB_CTRL, SDRC_DLLA_CTRL);
-        delay(0x2000);  /* give time to lock */
-
-}
-
 void config_3430sdram_ddr(void)
 {
         /* reset sdrc controller */
@@ -247,8 +280,7 @@ void config_3430sdram_ddr(void)
         delay(0x20000); // some delay
 
 }
-
-#endif				// CFG_3430SDRAM_DDR
+#endif /* CFG_3430SDRAM_DDR */
 
 /*************************************************************
  * get_sys_clk_speed - determine reference oscillator speed
@@ -275,7 +307,8 @@ u32 get_osc_clk_speed(void)
 
 	__raw_writel(0, OMAP34XX_GPT1 + TLDR);	/* start counting at 0 */
 	__raw_writel(GPT_EN, OMAP34XX_GPT1 + TCLR);	/* enable clock */
-	/* enable 32kHz source *//* enabled out of reset */
+	/* enable 32kHz source */
+	/* enabled out of reset */
 	/* determine sys_clk via gauging */
 
 	start = 20 + __raw_readl(S32K_CR);	/* start time in 20 cycles */
@@ -363,8 +396,7 @@ void prcm_init(void)
 	/* Getting the base address of Core DPLL param table */
 	dpll_param_p = (dpll_param *) get_core_dpll_param();
 	/* Moving it to the right sysclk and ES rev base */
-// **** 2 = 396MHz   3 = 500MHz
-	dpll_param_p = dpll_param_p + CLK_MULT * clk_index + sil_index;
+	dpll_param_p = dpll_param_p + 2*clk_index + sil_index;
 	/* CORE DPLL */
 	/* sr32(CM_CLKSEL2_EMU) set override to work when asleep */
 	sr32(CM_CLKEN_PLL, 0, 3, PLL_FAST_RELOCK_BYPASS);
@@ -405,7 +437,7 @@ void prcm_init(void)
 	/* Getting the base address to MPU DPLL param table */
 	dpll_param_p = (dpll_param *) get_mpu_dpll_param();
 	/* Moving it to the right sysclk and ES rev base */
-	dpll_param_p = dpll_param_p + CLK_MULT * clk_index + sil_index;
+	dpll_param_p = dpll_param_p + 2*clk_index + sil_index;
 	/* MPU DPLL (unlocked already) */
 	sr32(CM_CLKSEL2_PLL_MPU, 0, 5, dpll_param_p->m2);	/* Set M2 */
 	sr32(CM_CLKSEL1_PLL_MPU, 8, 11, dpll_param_p->m);	/* Set M */
@@ -417,7 +449,7 @@ void prcm_init(void)
 	/* Getting the base address to IVA DPLL param table */
 	dpll_param_p = (dpll_param *) get_iva_dpll_param();
 	/* Moving it to the right sysclk and ES rev base */
-	dpll_param_p = dpll_param_p + CLK_MULT * clk_index + sil_index;
+	dpll_param_p = dpll_param_p + 2*clk_index + sil_index;
 	/* IVA DPLL (set to 12*20=240MHz) */
 	sr32(CM_CLKEN_PLL_IVA2, 0, 3, PLL_STOP);
 	wait_on_value(BIT0, 0, CM_IDLEST_PLL_IVA2, LDELAY);
@@ -496,6 +528,12 @@ void try_unlock_memory(void)
 void s_init(void)
 {
 	watchdog_init();
+#ifdef CONFIG_3430_AS_3410
+	/* setup the scalability control register for
+	 * 3430 to work in 3410 mode
+	 */
+	__raw_writel(0x5ABF, CONTROL_SCALABLE_OMAP_OCP);
+#endif
 	try_unlock_memory();
 	set_muxconf_regs();
 	delay(100);
@@ -512,17 +550,17 @@ int misc_init_r(void)
 {
 	unsigned char byte;
 
-#if 1
-#ifdef CONFIG_DRIVER_OMAP34XX_I2C
-	i2c_init(CFG_I2C_SPEED, CFG_I2C_SLAVE);
-#endif
 
 	/*VAUX4 = 2.8V    (TOUCH,NUBS,RS-232 TRANSCEIVER)*/
 	byte = 0x20;
 	i2c_write(0x4B, 0x7E, 1, &byte, 1);
 	byte = 0x0A;
 	i2c_write(0x4B, 0x81, 1, &byte, 1);
-#endif
+
+	#ifdef CFG_PRINTF
+		printf("Pandora X-Loader - USB Test \n");
+		printf("Serial Initialised \n");
+	#endif
 
 	return (0);
 }
@@ -589,6 +627,28 @@ void per_clocks_enable(void)
 	sr32(CM_ICLKEN_PER, 11, 1, 0x1);
 
 #endif
+
+#ifdef CONFIG_DRIVER_OMAP34XX_I2C
+	/* Turn on all 3 I2C clocks */
+	sr32(CM_FCLKEN1_CORE, 15, 3, 0x7);
+	sr32(CM_ICLKEN1_CORE, 15, 3, 0x7);	/* I2C1,2,3 = on */
+#endif
+
+	/* Enable the ICLK for 32K Sync Timer as its used in udelay */
+	sr32(CM_ICLKEN_WKUP, 2, 1, 0x1);
+
+	sr32(CM_FCLKEN_IVA2, 0, 32, FCK_IVA2_ON);
+	sr32(CM_FCLKEN1_CORE, 0, 32, FCK_CORE1_ON);
+	sr32(CM_ICLKEN1_CORE, 0, 32, ICK_CORE1_ON);
+	sr32(CM_ICLKEN2_CORE, 0, 32, ICK_CORE2_ON);
+	sr32(CM_FCLKEN_WKUP, 0, 32, FCK_WKUP_ON);
+	sr32(CM_ICLKEN_WKUP, 0, 32, ICK_WKUP_ON);
+	sr32(CM_FCLKEN_DSS, 0, 32, FCK_DSS_ON);
+	sr32(CM_ICLKEN_DSS, 0, 32, ICK_DSS_ON);
+	sr32(CM_FCLKEN_CAM, 0, 32, FCK_CAM_ON);
+	sr32(CM_ICLKEN_CAM, 0, 32, ICK_CAM_ON);
+	sr32(CM_FCLKEN_PER, 0, 32, FCK_PER_ON);
+	sr32(CM_ICLKEN_PER, 0, 32, ICK_PER_ON);
 
 	/* Enable GPIO5 clocks for blinky LEDs */
 	sr32(CM_FCLKEN_PER, 16, 1, 0x1);	/* FCKen GPIO5 */
@@ -980,55 +1040,64 @@ int nand_init(void)
 	__raw_writel(0x001, GPMC_CONFIG);	/* set nWP, disable limited addr */
 #endif
 
-	/* Set the GPMC Vals . For NAND boot on 3430SDP, NAND is mapped at CS0
-	 *  , NOR at CS1 and MPDB at CS3. And oneNAND boot, we map oneNAND at CS0.
-	 *  We configure only GPMC CS0 with required values. Configiring other devices
-	 *  at other CS in done in u-boot anyway. So we don't have to bother doing it here.
+	/* Set the GPMC Vals, NAND is mapped at CS0
+	 *  We configure only GPMC CS0 with required values. Configuring other devices
+	 *  at other CS is done in u-boot. So we don't have to bother doing it here.
 	 */
 	__raw_writel(0, GPMC_CONFIG7 + GPMC_CONFIG_CS0);
 	delay(1000);
 
-#ifdef CFG_NAND
-	__raw_writel(M_NAND_GPMC_CONFIG1, GPMC_CONFIG1 + GPMC_CONFIG_CS0);
-	__raw_writel(M_NAND_GPMC_CONFIG2, GPMC_CONFIG2 + GPMC_CONFIG_CS0);
-	__raw_writel(M_NAND_GPMC_CONFIG3, GPMC_CONFIG3 + GPMC_CONFIG_CS0);
-	__raw_writel(M_NAND_GPMC_CONFIG4, GPMC_CONFIG4 + GPMC_CONFIG_CS0);
-	__raw_writel(M_NAND_GPMC_CONFIG5, GPMC_CONFIG5 + GPMC_CONFIG_CS0);
-	__raw_writel(M_NAND_GPMC_CONFIG6, GPMC_CONFIG6 + GPMC_CONFIG_CS0);
+	if ((get_mem_type() == GPMC_NAND) || (get_mem_type() == MMC_NAND)) {
+		__raw_writel(M_NAND_GPMC_CONFIG1, GPMC_CONFIG1 + GPMC_CONFIG_CS0);
+		__raw_writel(M_NAND_GPMC_CONFIG2, GPMC_CONFIG2 + GPMC_CONFIG_CS0);
+		__raw_writel(M_NAND_GPMC_CONFIG3, GPMC_CONFIG3 + GPMC_CONFIG_CS0);
+		__raw_writel(M_NAND_GPMC_CONFIG4, GPMC_CONFIG4 + GPMC_CONFIG_CS0);
+		__raw_writel(M_NAND_GPMC_CONFIG5, GPMC_CONFIG5 + GPMC_CONFIG_CS0);
+		__raw_writel(M_NAND_GPMC_CONFIG6, GPMC_CONFIG6 + GPMC_CONFIG_CS0);
 
-#else				/* CFG_ONENAND */
-	__raw_writel(ONENAND_GPMC_CONFIG1, GPMC_CONFIG1 + GPMC_CONFIG_CS0);
-	__raw_writel(ONENAND_GPMC_CONFIG2, GPMC_CONFIG2 + GPMC_CONFIG_CS0);
-	__raw_writel(ONENAND_GPMC_CONFIG3, GPMC_CONFIG3 + GPMC_CONFIG_CS0);
-	__raw_writel(ONENAND_GPMC_CONFIG4, GPMC_CONFIG4 + GPMC_CONFIG_CS0);
-	__raw_writel(ONENAND_GPMC_CONFIG5, GPMC_CONFIG5 + GPMC_CONFIG_CS0);
-	__raw_writel(ONENAND_GPMC_CONFIG6, GPMC_CONFIG6 + GPMC_CONFIG_CS0);
-#endif
+		/* Enable the GPMC Mapping */
+		__raw_writel((((OMAP34XX_GPMC_CS0_SIZE & 0xF)<<8) |
+			     ((NAND_BASE_ADR>>24) & 0x3F) |
+			     (1<<6)),  (GPMC_CONFIG7 + GPMC_CONFIG_CS0));
+		delay(2000);
 
-	/* Enable the GPMC Mapping */
-	__raw_writel((((OMAP34XX_GPMC_CS0_SIZE & 0xF) << 8) |
-		      ((OMAP34XX_GPMC_CS0_MAP >> 24) & 0x3F) |
-		      (1 << 6)), (GPMC_CONFIG7 + GPMC_CONFIG_CS0));
-	delay(2000);
-#ifdef CFG_NAND
-	if (nand_chip()) {
+		if (nand_chip()) {
 #ifdef CFG_PRINTF
-		printf("Unsupported Chip!\n");
+			printf("Unsupported Chip!\n");
 #endif
-		return 1;
+			return 1;
+		}
+
 	}
-#else
-	if (onenand_chip()) {
+
+	if ((get_mem_type() == GPMC_ONENAND) || (get_mem_type() == MMC_ONENAND)) {
+		__raw_writel(ONENAND_GPMC_CONFIG1, GPMC_CONFIG1 + GPMC_CONFIG_CS0);
+		__raw_writel(ONENAND_GPMC_CONFIG2, GPMC_CONFIG2 + GPMC_CONFIG_CS0);
+		__raw_writel(ONENAND_GPMC_CONFIG3, GPMC_CONFIG3 + GPMC_CONFIG_CS0);
+		__raw_writel(ONENAND_GPMC_CONFIG4, GPMC_CONFIG4 + GPMC_CONFIG_CS0);
+		__raw_writel(ONENAND_GPMC_CONFIG5, GPMC_CONFIG5 + GPMC_CONFIG_CS0);
+		__raw_writel(ONENAND_GPMC_CONFIG6, GPMC_CONFIG6 + GPMC_CONFIG_CS0);
+
+		/* Enable the GPMC Mapping */
+		__raw_writel((((OMAP34XX_GPMC_CS0_SIZE & 0xF)<<8) |
+			     ((ONENAND_BASE>>24) & 0x3F) |
+			     (1<<6)),  (GPMC_CONFIG7 + GPMC_CONFIG_CS0));
+		delay(2000);
+
+		if (onenand_chip()) {
 #ifdef CFG_PRINTF
-		printf("OneNAND Unsupported !\n");
+			printf("OneNAND Unsupported !\n");
 #endif
-		return 1;
+			return 1;
+		}
 	}
-#endif
 	return 0;
 }
 
-static void blinkLEDs(void)
+#define DEBUG_SD1_LED			128	/* gpio - SD Slot 1 */
+#define DEBUG_SD2_LED			129	/* gpio - SD Slot 2 */
+
+void blinkLEDs()
 {
 	void *p;
 
@@ -1036,188 +1105,38 @@ static void blinkLEDs(void)
 	p = (unsigned long *)OMAP34XX_GPIO5_BASE;
 	while (1) {
 		/* turn LED1 on and LED2 off */
-		*(unsigned long *)(p + 0x94) = 1 << (DEBUG_LED1 % 32);
-		*(unsigned long *)(p + 0x90) = 1 << (DEBUG_LED2 % 32);
+		*(unsigned long *)(p + 0x94) = 1 << (DEBUG_SD1_LED % 32);
+		*(unsigned long *)(p + 0x90) = 1 << (DEBUG_SD2_LED % 32);
 
 		/* delay for a while */
 		delay(1000);
 
 		/* turn LED1 off and LED2 on */
-		*(unsigned long *)(p + 0x90) = 1 << (DEBUG_LED1 % 32);
-		*(unsigned long *)(p + 0x94) = 1 << (DEBUG_LED2 % 32);
+		*(unsigned long *)(p + 0x90) = 1 << (DEBUG_SD1_LED % 32);
+		*(unsigned long *)(p + 0x94) = 1 << (DEBUG_SD2_LED % 32);
 
 		/* delay for a while */
 		delay(1000);
 	}
 }
 
-#ifdef CFG_CMD_FAT
-typedef int (mmc_boot_addr) (void);
-int mmc_boot(void)
-{
-	long size;
-	unsigned long offset;
-	block_dev_desc_t *dev_desc = NULL;
-	unsigned char ret = 0;
-
-	printf("Starting on with MMC \n");
-
-	ret = mmc_init(1);
-	if(ret == 0){
-		printf("\n MMC init failed \n");
-		return 0;
-	}
-	dev_desc = mmc_get_dev(0);
-	fat_register_device(dev_desc, 1);
-
-#if defined TRY_AUDIO | defined TRY_BMP
-	unsigned int seconds_count = 3, half_seconds = 0;
-	unsigned char abort = 0;
-	unsigned int buttons;
-/*
-	printf("Preparing to load extra audio and video data.\n");
-	printf("Press one of the shoulder buttons to cancel within %d seconds.\n",seconds_count);
-	printf("%d",seconds_count);
-	while (seconds_count) {
-		delay(1000);	//Just wait a half second between checking buttons
-		half_seconds ++;
-		buttons = *((uint *) 0x49054038);
-		if ( !(buttons & (1 << (105-96)))  || !(buttons & (1 << (102-96))) ) {
-			seconds_count = 0;
-			abort = 1;
-		}
-		else if (half_seconds == 2) {
-			half_seconds = 0;
-			seconds_count --;
-			printf(",%d",seconds_count);
-		}
-	}
-*/
-	if (!abort) {
-#ifdef TRY_AUDIO
-	printf("Attempting to load output1.wav into RAM....\n");
-	offset = WAV_LOADADDR;
-	size = file_fat_read("output1.wav", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("WAV file failed to load at 0x%x\n",WAV_LOADADDR);
-	else {
-		printf("\n%ld bytes read from WAV file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",WAV_LOADADDR);
-	}
-#endif
-#ifdef TRY_BMP
-	printf("Attempting to load bmp1.raw into RAM....\n");
-	offset = DEFAULT_BMP1;
-	size = file_fat_read("bmp1.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP1);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP1);
-	}
-	printf("Attempting to load bmp2.raw into RAM....\n");
-	offset = DEFAULT_BMP2;
-	size = file_fat_read("bmp2.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP2);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP2);
-	}
-	printf("Attempting to load bmp3.raw into RAM....\n");
-	offset = DEFAULT_BMP3;
-	size = file_fat_read("bmp3.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP3);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP3);
-	}
-	printf("Attempting to load bmp4.raw into RAM....\n");
-	offset = DEFAULT_BMP4;
-	size = file_fat_read("bmp4.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP4);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP4);
-	}
-	printf("Attempting to load bmp5.raw into RAM....\n");
-	offset = DEFAULT_BMP5;
-	size = file_fat_read("bmp5.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP5);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP5);
-	}
-	printf("Attempting to load bmp6.raw into RAM....\n");
-	offset = DEFAULT_BMP6;
-	size = file_fat_read("bmp6.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP6);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP6);
-	}
-	printf("Attempting to load bmp7.raw into RAM....\n");
-	offset = DEFAULT_BMP7;
-	size = file_fat_read("bmp7.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP7);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP7);
-	}
-	printf("Attempting to load bmp8.raw into RAM....\n");
-	offset = DEFAULT_BMP8;
-	size = file_fat_read("bmp8.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP8);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP8);
-	}
-	printf("Attempting to load bmp9.raw into RAM....\n");
-	offset = DEFAULT_BMP9;
-	size = file_fat_read("bmp9.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP9);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP9);
-	}
-	printf("Attempting to load bmp10.raw into RAM....\n");
-	offset = DEFAULT_BMP10;
-	size = file_fat_read("bmp10.raw", (unsigned char *)offset, 0);
-	if (size == -1)
-		printf("RAW file failed to load at 0x%x\n",DEFAULT_BMP10);
-	else {
-		printf("\n%ld bytes read from RAW file on MMC\n", size);
-		printf("Loaded to address 0x%x\n",DEFAULT_BMP10);
-	}
-#endif
-	}
-#endif
-	offset = CFG_LOADADDR;
-	size = file_fat_read("u-boot.bin", (unsigned char *)offset, 0);
-	if (size == -1) {
-		return 0;
-	}
-	printf("\n%ld Bytes Read from MMC \n", size);
-
-	printf("Starting OS Bootloader from MMC...\n");
-
-	((mmc_boot_addr *) CFG_LOADADDR) ();
-
-	return 0;
-}
-#endif
-
 /* optionally do something like blinking LED */
 void board_hang(void)
 {
-	while (1) {
+	while (1)
 		blinkLEDs();
-	}
+}
+
+/******************************************************************************
+ * Dummy function to handle errors for EABI incompatibility
+ *****************************************************************************/
+void raise(void)
+{
+}
+
+/******************************************************************************
+ * Dummy function to handle errors for EABI incompatibility
+ *****************************************************************************/
+void abort(void)
+{
 }
