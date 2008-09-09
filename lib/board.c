@@ -93,7 +93,7 @@ void start_armboot (void)
 		size = file_fat_read("u-boot.bin", buf, 0);
 		if (size > 0) {
 #ifdef CFG_PRINTF
-			printf("Starting from MMC card \n");
+			printf("Loading u-boot.bin from MMC\n");
 			printf("\n%ld Bytes Read from MMC \n", size);
 #endif
 			buf += size;
@@ -105,7 +105,7 @@ void start_armboot (void)
 		/* if no u-boot on mmc, try onenand or nand, depending upon sysboot */
 		if (get_mem_type() == GPMC_ONENAND){
 #ifdef CFG_PRINTF
-       			printf("Booting from onenand\n");
+       			printf("Loading u-boot.bin from onenand\n");
 #endif
         		for (i = ONENAND_START_BLOCK; i < ONENAND_END_BLOCK; i++){
         			if (!onenand_read_block(buf, i))
@@ -113,7 +113,7 @@ void start_armboot (void)
         		}
 		} else if (get_mem_type() == GPMC_NAND){
 #ifdef CFG_PRINTF
-       			printf("Booting from nand\n");
+       			printf("Loading u-boot.bin from NAND\n");
 #endif
         		for (i = NAND_UBOOT_START; i < NAND_UBOOT_END; i+= NAND_BLOCK_SIZE){
         			if (!nand_read_block(buf, i))
