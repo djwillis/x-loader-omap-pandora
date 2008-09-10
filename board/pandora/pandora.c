@@ -41,6 +41,7 @@
 //#include <mmc.h>
 
 //#define	CLK_MULT	3
+
 /* Used to index into DPLL parameter tables */
 struct dpll_param {
 	unsigned int m;
@@ -758,7 +759,7 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(GPMC_nWP),       (IEN  | PTD | DIS | M0)) /*GPMC_nWP*/\
 	MUX_VAL(CP(GPMC_WAIT0),     (IEN  | PTU | EN  | M0)) /*GPMC_WAIT0*/\
 	MUX_VAL(CP(GPMC_WAIT1),     (IEN  | PTU | EN  | M0)) /*GPMC_WAIT1*/\
-	/*DSS*/\
+	/*LCD Interface*/\
 	MUX_VAL(CP(DSS_PCLK),       (IDIS | PTD | DIS | M0)) /*DSS_PCLK*/\
 	MUX_VAL(CP(DSS_HSYNC),      (IDIS | PTD | DIS | M0)) /*DSS_HSYNC*/\
 	MUX_VAL(CP(DSS_VSYNC),      (IDIS | PTD | DIS | M0)) /*DSS_VSYNC*/\
@@ -808,16 +809,20 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(CAM_XCLKB),      (IEN  | PTU | EN  | M4)) /*GPIO_111, GAME_A*/\
 	MUX_VAL(CP(CAM_WEN),        (IEN  | PTU | EN  | M4)) /*GPIO_167, SPARE_GPIO3*/\
 	MUX_VAL(CP(CAM_STROBE),     (IEN  | PTU | EN  | M4)) /*GPIO_126, SPARE_GPIO2*/\
+	/*UNCONNECTED PINS*/\
 	MUX_VAL(CP(CSI2_DX0),       (IEN  | PTD | DIS | M0)) /*CSI2_DX0, UNCONNECTED*/\
 	MUX_VAL(CP(CSI2_DY0),       (IEN  | PTD | DIS | M0)) /*CSI2_DY0, UNCONNECTED*/\
 	MUX_VAL(CP(CSI2_DX1),       (IEN  | PTD | DIS | M0)) /*CSI2_DX1, UNCONNECTED*/\
 	MUX_VAL(CP(CSI2_DY1),       (IEN  | PTD | DIS | M0)) /*CSI2_DY1, UNCONNECTED*/\
+	MUX_VAL(CP(HDQ_SIO),        (IEN  | PTU | EN  | M0)) /*HDQ_SIO, NOT CONNECTED*/\
+	MUX_VAL(CP(I2C2_SCL),       (IEN  | PTU | EN  | M0)) /*I2C2_SCL, UNCONNECTED*/\
+	MUX_VAL(CP(I2C2_SDA),       (IEN  | PTU | EN  | M0)) /*I2C2_SDA, UNCONNECTED*/\
 	/*Audio Interface To Triton2*/\
 	MUX_VAL(CP(McBSP2_FSX),     (IDIS | PTD | DIS | M0)) /*McBSP2_FSX*/\
 	MUX_VAL(CP(McBSP2_CLKX),    (IDIS | PTD | DIS | M0)) /*McBSP2_CLKX*/\
 	MUX_VAL(CP(McBSP2_DR),      (IEN  | PTD | DIS | M0)) /*McBSP2_DR*/\
 	MUX_VAL(CP(McBSP2_DX),      (IDIS | PTD | DIS | M0)) /*McBSP2_DX*/\
-	MUX_VAL(CP(McBSP_CLKS),     (IDIS | PTU | DIS | M0)) /*McBSP_CLKS  */\
+	MUX_VAL(CP(McBSP_CLKS),     (IEN  | PTU | DIS | M0)) /*McBSP_CLKS  */\
 	/*Expansion card 1*/\
 	MUX_VAL(CP(MMC1_CLK),       (IDIS | PTU | EN  | M0)) /*MMC1_CLK*/\
 	MUX_VAL(CP(MMC1_CMD),       (IEN  | PTU | EN  | M0)) /*MMC1_CMD*/\
@@ -842,7 +847,6 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(MMC2_DAT7),      (IEN  | PTU | EN  | M1)) /*MMC2_CLKIN*/\
 	/*Audio Interface To External DAC (Headphone, Speakers)*/\
 	MUX_VAL(CP(McBSP3_DX),      (IDIS | PTD | DIS | M0)) /*McBSP3_DX*/\
-	MUX_VAL(CP(McBSP3_DR),      (IDIS | PTD | DIS | M4)) /*GPIO_141, nPOWERDOWN_DAC*/\
 	MUX_VAL(CP(McBSP3_CLKX),    (IDIS | PTD | DIS | M0)) /*McBSP3_CLKX  */\
 	MUX_VAL(CP(McBSP3_FSX),     (IDIS | PTD | DIS | M0)) /*McBSP3_FSX*/\
 	/*Future interface to Bluetooth or other usage (EXP CONN)*/\
@@ -855,6 +859,7 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(McBSP4_DX),      (IDIS | PTD | DIS | M0)) /*McBSP4_DX*/\
 	MUX_VAL(CP(McBSP4_FSX),     (IDIS | PTD | DIS | M0)) /*McBSP4_FSX*/\
 	/*GPIO definitions for muxed pins*/\
+	MUX_VAL(CP(McBSP3_DR),      (IDIS | PTD | DIS | M4)) /*GPIO_141, nPOWERDOWN_DAC*/\
 	MUX_VAL(CP(UART2_CTS),      (IEN  | PTU | EN  | M4)) /*GPIO_144, nTOUCH_IRQ*/\
 	MUX_VAL(CP(UART2_RTS),      (IDIS | PTU | DIS | M4)) /*GPIO_145, nNUB_RESET*/\
 	MUX_VAL(CP(UART2_TX),       (IEN  | PTU | EN  | M4)) /*GPIO_146, nTOUCH_BUSY*/\
@@ -862,7 +867,6 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(McBSP1_CLKX),    (IDIS | PTD | DIS | M4)) /*GPIO_162, START_ADC*/\
 	MUX_VAL(CP(UART3_CTS_RCTX), (IEN  | PTD | DIS | M4)) /*GPIO_163, nOC_USB5*/\
 	MUX_VAL(CP(UART3_RTS_SD),   (IDIS | PTD | DIS | M4)) /*GPIO_164, EN_USB_5V*/\
-	MUX_VAL(CP(HDQ_SIO),        (IEN  | PTU | EN  | M0)) /*HDQ_SIO, NOT CONNECTED*/\
 	MUX_VAL(CP(ETK_D0_ES2 ),    (IDIS | PTD | DIS | M4)) /*GPIO_14, nHEADPHONE_SHUTDOWN*/\
 	MUX_VAL(CP(ETK_D1_ES2 ),    (IDIS | PTD | DIS | M4)) /*GPIO_15, WIFI_POWER_ENABLE*/\
 	MUX_VAL(CP(ETK_D2_ES2 ),    (IEN  | PTD | DIS | M4)) /*GPIO_16, MOTION_NUB2*/\
@@ -894,8 +898,6 @@ void per_clocks_enable(void)
 	/*I2C Ports*/\
 	MUX_VAL(CP(I2C1_SCL),       (IEN  | PTU | EN  | M0)) /*I2C1_SCL*/\
 	MUX_VAL(CP(I2C1_SDA),       (IEN  | PTU | EN  | M0)) /*I2C1_SDA*/\
-	MUX_VAL(CP(I2C2_SCL),       (IEN  | PTU | EN  | M0)) /*I2C2_SCL*/\
-	MUX_VAL(CP(I2C2_SDA),       (IEN  | PTU | EN  | M0)) /*I2C2_SDA*/\
 	MUX_VAL(CP(I2C3_SCL),       (IEN  | PTU | EN  | M0)) /*I2C3_SCL*/\
 	MUX_VAL(CP(I2C3_SDA),       (IEN  | PTU | EN  | M0)) /*I2C3_SDA*/\
 	MUX_VAL(CP(I2C4_SCL),       (IEN  | PTU | EN  | M0)) /*I2C4_SCL*/\
@@ -908,19 +910,19 @@ void per_clocks_enable(void)
 	MUX_VAL(CP(McSPI1_CS1),     (IDIS | PTU | EN  | M0)) /*McSPI1_CS1, NUB_LEFT*/\
 	MUX_VAL(CP(McSPI1_CS2),     (IDIS | PTU | EN  | M0)) /*McSPI1_CS2, NUB_RIGHT*/\
 	/*HS USB HOST Port (connects to HSUSB2)*/\
-	MUX_VAL(CP(ETK_D10_ES2),    (IDIS | PTU | DIS | M3)) /*USB_HOST_CLK*/\
+	MUX_VAL(CP(ETK_D10_ES2),    (IDIS | PTD | DIS | M3)) /*USB_HOST_CLK*/\
 	MUX_VAL(CP(ETK_D11_ES2),    (IDIS | PTU | EN  | M3)) /*USB_HOST_STP*/\
-	MUX_VAL(CP(ETK_D12_ES2),    (IEN  | PTU | DIS | M3)) /*USB_HOST_DIR*/\
-	MUX_VAL(CP(ETK_D13_ES2),    (IEN  | PTU | DIS | M3)) /*USB_HOST_NXT*/\
-	MUX_VAL(CP(ETK_D14_ES2),    (IEN  | PTU | DIS | M3)) /*USB_HOST_D0*/\
-	MUX_VAL(CP(ETK_D15_ES2),    (IEN  | PTU | DIS | M3)) /*USB_HOST_D1*/\
+	MUX_VAL(CP(ETK_D12_ES2),    (IEN  | PTD | DIS | M3)) /*USB_HOST_DIR*/\
+	MUX_VAL(CP(ETK_D13_ES2),    (IEN  | PTD | DIS | M3)) /*USB_HOST_NXT*/\
+	MUX_VAL(CP(ETK_D14_ES2),    (IEN  | PTD | DIS | M3)) /*USB_HOST_D0*/\
+	MUX_VAL(CP(ETK_D15_ES2),    (IEN  | PTD | DIS | M3)) /*USB_HOST_D1*/\
 	MUX_VAL(CP(McSPI1_CS3),     (IEN  | PTD | DIS | M3)) /*USB_HOST_D2*/\
 	MUX_VAL(CP(McSPI2_CS1),     (IEN  | PTD | DIS | M3)) /*USB_HOST_D3*/\
 	MUX_VAL(CP(McSPI2_SIMO),    (IEN  | PTD | DIS | M3)) /*USB_HOST_D4*/\
 	MUX_VAL(CP(McSPI2_SOMI),    (IEN  | PTD | DIS | M3)) /*USB_HOST_D5*/\
 	MUX_VAL(CP(McSPI2_CS0),     (IEN  | PTD | DIS | M3)) /*USB_HOST_D6*/\
 	MUX_VAL(CP(McSPI2_CLK),     (IEN  | PTD | DIS | M3)) /*USB_HOST_D7*/\
-	/*Control and debug */\
+	/*Control and debug (Not for GP usage)*/\
 	MUX_VAL(CP(SYS_32K),        (IEN  | PTD | DIS | M0)) /*SYS_32K*/\
 	MUX_VAL(CP(SYS_CLKREQ),     (IEN  | PTD | DIS | M0)) /*SYS_CLKREQ*/\
 	MUX_VAL(CP(SYS_nIRQ),       (IEN  | PTU | EN  | M0)) /*SYS_nIRQ*/\

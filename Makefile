@@ -153,8 +153,10 @@ overo_config :	unconfig
 	@./mkconfig $(@:_config=) arm omap3 overo
 
 omap3530beagle_config :    unconfig
-
 	@./mkconfig $(@:_config=) arm omap3 omap3530beagle
+
+pandora_config :    unconfig
+	@./mkconfig $(@:_config=) arm omap3 pandora
 
 #########################################################################
 
